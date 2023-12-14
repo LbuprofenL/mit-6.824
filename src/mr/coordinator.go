@@ -6,14 +6,60 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"sync"
+	"time"
 )
 
 type Coordinator struct {
-	// Your definitions here.
-
+	fileStateMap map[string]int
+	taskMap      map[int]string
+	nReduce      int
+	mu           sync.Mutex
 }
 
 // Your code here -- RPC handlers for the worker to call.
+func (c *Coordinator) MapRequest(args *MapArgs, reply *MapReply) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for file, state := range c.fileStateMap {
+		if state == 0 {
+			reply.filename = file
+			reply.nReduce = c.nReduce
+
+			c.fileStateMap[file] = 1
+			c.taskMap[args.Id] = file
+
+			timer := time.NewTimer(time.Second * 10)
+			go func() {
+				<-timer.C
+				if c.fileStateMap[file] != 2 {
+					c.fileStateMap[file] = 0
+				}
+			}()
+			break
+		}
+	}
+	return nil
+}
+
+func (c *Coordinator) MapTaskDone(args *MapArgs, reply *MapReply) (error, bool) {
+
+	c.mu.Lock()
+	task := c.taskMap[args.Id]
+	c.fileStateMap[task] = 2
+	c.mu.Unlock()
+
+	cnt := 0
+	for _, state := range c.fileStateMap {
+		if state == 2 {
+			cnt++
+		}
+	}
+	if cnt == len(c.fileStateMap) {
+		return nil, true
+	}
+	return nil, false
+}
 
 // an example RPC handler.
 //
@@ -53,8 +99,16 @@ func (c *Coordinator) Done() bool {
 func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{}
 
-	// Your code here.
-
+	//Get all the files
+	//每个文件会有三种状态：未被处理 0，处理中 1，处理结束 2
+	m := make(map[string]int)
+	for _, filename := range files {
+		m[filename] = 0
+	}
+	taskMap := make(map[int]string)
+	c.fileStateMap = m
+	c.taskMap = taskMap
+	c.nReduce = nReduce
 	c.server()
 	return &c
 }
