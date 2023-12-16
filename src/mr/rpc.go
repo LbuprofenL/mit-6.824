@@ -32,6 +32,7 @@ type RequestArgs struct {
 type RequestReply struct {
 	TaskType string
 	Filename string
+	NMap     int
 	NReduce  int
 	MapId    int
 	ReduceId int

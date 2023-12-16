@@ -29,12 +29,12 @@ type Coordinator struct {
 func (c *Coordinator) Request(args *RequestArgs, reply *RequestReply) error {
 	switch c.phase {
 	case "Map":
-		err := c.MapRequest(args, reply)
+		err := c.mapRequest(args, reply)
 		if err != nil {
 			return err
 		}
 	case "Reduce":
-		err := c.ReduceRequest(args, reply)
+		err := c.reduceRequest(args, reply)
 		if err != nil {
 			return err
 		}
@@ -45,7 +45,7 @@ func (c *Coordinator) Request(args *RequestArgs, reply *RequestReply) error {
 }
 
 // Your code here -- RPC handlers for the worker to call.
-func (c *Coordinator) MapRequest(args *RequestArgs, reply *RequestReply) error {
+func (c *Coordinator) mapRequest(args *RequestArgs, reply *RequestReply) error {
 	for mapId, state := range c.mapState {
 		if state == 0 {
 			reply.mu.Lock()
@@ -75,12 +75,13 @@ func (c *Coordinator) MapRequest(args *RequestArgs, reply *RequestReply) error {
 	}
 	return nil
 }
-func (c *Coordinator) ReduceRequest(args *RequestArgs, reply *RequestReply) error {
+func (c *Coordinator) reduceRequest(args *RequestArgs, reply *RequestReply) error {
 	for reduceId, state := range c.reduceState {
 		if state == 0 {
 			reply.mu.Lock()
 			reply.Filename = c.fileMap[reduceId]
 			reply.NReduce = c.nReduce
+			reply.NMap = len(c.mapState)
 			reply.ReduceId = reduceId
 			reply.MapId = -1
 			reply.TaskType = c.phase
@@ -110,10 +111,24 @@ func (c *Coordinator) ReduceRequest(args *RequestArgs, reply *RequestReply) erro
 func (c *Coordinator) TaskDone(args *DoneArgs, reply *DoneReply) error {
 	if args.TaskType != c.phase {
 		reply.Reset = true
+		return nil
+	}
+	if args.TaskType == "Map" {
+		err := c.mapTaskDone(args, reply)
+		if err != nil {
+			return err
+		}
+	}
+
+	if args.TaskType == "Reduce" {
+		err := c.reduceTaskDone(args, reply)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
-func (c *Coordinator) MapTaskDone(args *DoneArgs, reply *DoneReply) error {
+func (c *Coordinator) mapTaskDone(args *DoneArgs, reply *DoneReply) error {
 	c.mu.Lock()
 	defer c.mu.Lock()
 	c.mapState[args.MapId] = 2
@@ -124,7 +139,7 @@ func (c *Coordinator) MapTaskDone(args *DoneArgs, reply *DoneReply) error {
 
 	return nil
 }
-func (c *Coordinator) ReduceTaskDone(args *DoneArgs, reply *DoneReply) error {
+func (c *Coordinator) reduceTaskDone(args *DoneArgs, reply *DoneReply) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.reduceState[args.ReduceId] = 2
@@ -185,6 +200,7 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c.fileMap = fileName
 	c.mapState = mapState
 	c.nReduce = nReduce
+
 	reduceState := make(map[int]int)
 	for i := 0; i < nReduce; i++ {
 		reduceState[i] = 0

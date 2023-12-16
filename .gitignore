@@ -9,3 +9,4 @@ bin/impl
 bin/gotests
 bin/gopls
 bin/goplay
+bin/
