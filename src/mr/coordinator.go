@@ -11,54 +11,128 @@ import (
 )
 
 type Coordinator struct {
-	fileStateMap map[string]int
-	taskMap      map[int]string
-	nReduce      int
-	mu           sync.Mutex
+	//0:need to be processed
+	//1:processing
+	//2:processed
+	mapState    map[int]int //mapId -> state
+	reduceState map[int]int //reduceId ->state
+	fileMap     map[int]string
+	nReduce     int
+
+	mapFinishedCnt    int
+	reduceFinishedCnt int
+
+	phase string
+	mu    sync.Mutex
+}
+
+func (c *Coordinator) Request(args *RequestArgs, reply *RequestReply) error {
+	switch c.phase {
+	case "Map":
+		err := c.MapRequest(args, reply)
+		if err != nil {
+			return err
+		}
+	case "Reduce":
+		err := c.ReduceRequest(args, reply)
+		if err != nil {
+			return err
+		}
+	case "Done":
+		reply.Finished = true
+	}
+	return nil
 }
 
 // Your code here -- RPC handlers for the worker to call.
-func (c *Coordinator) MapRequest(args *MapArgs, reply *MapReply) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	for file, state := range c.fileStateMap {
+func (c *Coordinator) MapRequest(args *RequestArgs, reply *RequestReply) error {
+	for mapId, state := range c.mapState {
 		if state == 0 {
-			reply.filename = file
-			reply.nReduce = c.nReduce
+			reply.mu.Lock()
+			reply.Filename = c.fileMap[mapId]
+			reply.NReduce = c.nReduce
+			reply.MapId = mapId
+			reply.ReduceId = -1
+			reply.TaskType = c.phase
+			reply.mu.Unlock()
 
-			c.fileStateMap[file] = 1
-			c.taskMap[args.Id] = file
+			c.mu.Lock()
+			c.mapState[mapId] = 1
+			c.mu.Lock()
+			log.Printf("mapRequest Changed State to: %v", c.mapState)
+			t := time.NewTimer(time.Second * 10)
+			go func(mapId int) {
+				<-t.C
+				if c.mapState[mapId] == 1 {
+					c.mu.Lock()
+					c.mapState[mapId] = 0
+					c.mu.Unlock()
 
-			timer := time.NewTimer(time.Second * 10)
-			go func() {
-				<-timer.C
-				if c.fileStateMap[file] != 2 {
-					c.fileStateMap[file] = 0
+					log.Printf("mapRequest Changed State to: %v", c.mapState)
 				}
-			}()
-			break
+			}(mapId)
+		}
+	}
+	return nil
+}
+func (c *Coordinator) ReduceRequest(args *RequestArgs, reply *RequestReply) error {
+	for reduceId, state := range c.reduceState {
+		if state == 0 {
+			reply.mu.Lock()
+			reply.Filename = c.fileMap[reduceId]
+			reply.NReduce = c.nReduce
+			reply.ReduceId = reduceId
+			reply.MapId = -1
+			reply.TaskType = c.phase
+			reply.mu.Unlock()
+
+			c.mu.Lock()
+			c.reduceState[reduceId] = 1
+			c.mu.Lock()
+
+			log.Printf("mapRequest Changed State to: %v", c.mapState)
+			t := time.NewTimer(time.Second * 10)
+			go func(reduceId int) {
+				<-t.C
+				if c.reduceState[reduceId] == 1 {
+					c.mu.Lock()
+					c.reduceState[reduceId] = 0
+					c.mu.Unlock()
+
+					log.Printf("mapRequest Changed State to: %v", c.mapState)
+				}
+			}(reduceId)
 		}
 	}
 	return nil
 }
 
-func (c *Coordinator) MapTaskDone(args *MapArgs, reply *MapReply) (error, bool) {
-
+func (c *Coordinator) TaskDone(args *DoneArgs, reply *DoneReply) error {
+	if args.TaskType != c.phase {
+		reply.Reset = true
+	}
+	return nil
+}
+func (c *Coordinator) MapTaskDone(args *DoneArgs, reply *DoneReply) error {
 	c.mu.Lock()
-	task := c.taskMap[args.Id]
-	c.fileStateMap[task] = 2
-	c.mu.Unlock()
+	defer c.mu.Lock()
+	c.mapState[args.MapId] = 2
+	c.mapFinishedCnt++
+	if c.mapFinishedCnt == len(c.mapState) {
+		c.phase = "Reduce"
+	}
 
-	cnt := 0
-	for _, state := range c.fileStateMap {
-		if state == 2 {
-			cnt++
-		}
+	return nil
+}
+func (c *Coordinator) ReduceTaskDone(args *DoneArgs, reply *DoneReply) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.reduceState[args.ReduceId] = 2
+	c.reduceFinishedCnt++
+	if c.reduceFinishedCnt == len(c.reduceState) {
+		c.phase = "Done"
 	}
-	if cnt == len(c.fileStateMap) {
-		return nil, true
-	}
-	return nil, false
+	return nil
 }
 
 // an example RPC handler.
@@ -88,8 +162,9 @@ func (c *Coordinator) server() {
 func (c *Coordinator) Done() bool {
 	ret := false
 
-	// Your code here.
-
+	if c.phase == "Done" {
+		ret = true
+	}
 	return ret
 }
 
@@ -101,14 +176,21 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 
 	//Get all the files
 	//每个文件会有三种状态：未被处理 0，处理中 1，处理结束 2
-	m := make(map[string]int)
-	for _, filename := range files {
-		m[filename] = 0
+	mapState := make(map[int]int)
+	fileName := make(map[int]string)
+	for mapId, filename := range files {
+		mapState[mapId] = 0
+		fileName[mapId] = filename
 	}
-	taskMap := make(map[int]string)
-	c.fileStateMap = m
-	c.taskMap = taskMap
+	c.fileMap = fileName
+	c.mapState = mapState
 	c.nReduce = nReduce
+	reduceState := make(map[int]int)
+	for i := 0; i < nReduce; i++ {
+		reduceState[i] = 0
+	}
+	c.reduceState = reduceState
+	c.phase = "Map"
 	c.server()
 	return &c
 }

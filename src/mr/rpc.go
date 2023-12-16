@@ -9,6 +9,7 @@ package mr
 import (
 	"os"
 	"strconv"
+	"sync"
 )
 
 //
@@ -24,17 +25,32 @@ type ExampleReply struct {
 	Y int
 }
 
-type MapArgs struct {
-	Id int
+type RequestArgs struct {
+	Pid int
 }
 
-type MapReply struct {
-	filename string
-	nReduce  int
-	Done     bool
+type RequestReply struct {
+	TaskType string
+	Filename string
+	NReduce  int
+	MapId    int
+	ReduceId int
+
+	Finished bool //已无任务
+	mu       sync.Mutex
 }
 
-// Add your RPC definitions here.
+type DoneArgs struct {
+	TaskType string
+	ReduceId int
+	MapId    int
+
+	mu sync.Mutex
+}
+
+type DoneReply struct {
+	Reset bool //超时节点
+}
 
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the coordinator.

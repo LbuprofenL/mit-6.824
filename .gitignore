@@ -2,3 +2,10 @@ pkg/
 api.key
 .api.key.trimmed
 *-handin.tar.gz
+bin/dlv
+bin/gomodifytags
+bin/staticcheck
+bin/impl
+bin/gotests
+bin/gopls
+bin/goplay

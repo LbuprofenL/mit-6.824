@@ -28,51 +28,24 @@ func ihash(key string) int {
 func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
 
-	// Your worker implementation here.
+		pid := os.Getpid()
+		var terminate = make(chan bool)
+		go func() {
+			CallRequest(pid)
+		}
 
-	// uncomment to send the Example RPC to the coordinator.
-	// CallExample()
-	//Map Phase
-	count := 10
-	for i := 0; i < count; i++ {
-		go func(id int) {
-			for {
-				args := MapArgs{}
-				args.Id = id
-				reply := MapReply{}
 
-				ok := call("Coordinator.MapRequest", &args, &reply)
-				if !ok {
-					log.Fatal("MapRequest Failed.")
-				}
-				done := execMapTask(mapf, reply.filename, id, reply.nReduce)
-				if done {
-					log.Fatal("execMapTask Failed.")
-				}
-				ok = call("Coordinator.MapTaskDone", &args, &reply)
-				if !ok {
-					log.Fatal("MapTaskDone Failed.")
-				}
-				if reply.Done {
-					break
-				}
-			}
-
-		}(i)
-	}
-
-	//Reduce Phase
 
 }
 
-func CallMapRequest(mapf func(string, string) []KeyValue, id int) {
+func CallRequest(mapf func(string, string) []KeyValue, id int) {
 	args := MapArgs{}
 	args.Id = id
 	reply := MapReply{}
 
 	ok := call("Coordinator.MapRequest", &args, &reply)
 	if ok {
-		execMapTask(mapf, reply.filename, id, reply.nReduce)
+		execMapTask(mapf, reply.Filename, id, reply.NReduce)
 	}
 }
 
