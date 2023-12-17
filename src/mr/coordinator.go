@@ -54,12 +54,10 @@ func (c *Coordinator) mapRequest(args *RequestArgs, reply *RequestReply) error {
 	log.Printf("mapRequest: %v", args)
 	for mapId, state := range c.mapState {
 		if state == 0 {
-			reply.Mu.Lock()
 			reply.Filename = c.fileMap[mapId]
 			reply.NReduce = c.nReduce
 			reply.MapId = mapId
 			reply.TaskType = c.phase
-			reply.Mu.Unlock()
 
 			c.mu.Lock()
 			c.mapState[mapId] = 1
@@ -84,11 +82,9 @@ func (c *Coordinator) reduceRequest(args *RequestArgs, reply *RequestReply) erro
 	log.Printf("reduceRequest: %v", args)
 	for reduceId, state := range c.reduceState {
 		if state == 0 {
-			reply.Mu.Lock()
 			reply.NMap = len(c.mapState)
 			reply.ReduceId = reduceId
 			reply.TaskType = c.phase
-			reply.Mu.Unlock()
 
 			c.mu.Lock()
 			c.reduceState[reduceId] = 1

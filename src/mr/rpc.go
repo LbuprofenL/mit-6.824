@@ -9,7 +9,6 @@ package mr
 import (
 	"os"
 	"strconv"
-	"sync"
 )
 
 //
@@ -38,7 +37,6 @@ type RequestReply struct {
 	ReduceId int
 
 	Finished bool //已无任务
-	Mu       sync.Mutex
 }
 
 type DoneArgs struct {

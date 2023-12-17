@@ -34,14 +34,14 @@ func ihash(key string) int {
 // main/mrworker.go calls this function.
 func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
-	// logname := "mrworker.log"
-	// logfile, err := os.OpenFile(logname, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	// if err != nil {
-	// 	log.Fatalf("Failed to open log file: %v", err)
-	// }
-	// log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
-	// log.SetOutput(logfile)
 	pid := os.Getpid()
+	logname := fmt.Sprintf("mr-worker-%v.log", pid)
+	logfile, err := os.OpenFile(logname, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	log.SetOutput(logfile)
 	fmt.Printf("Worker %v start\n", pid)
 	failedCallCnt := 0
 	for {
@@ -50,6 +50,7 @@ func Worker(mapf func(string, string) []KeyValue,
 		requestReply := RequestReply{}
 		ok := call("Coordinator.Request", &requestArgs, &requestReply)
 		if failedCallCnt > 30 {
+			log.Printf("Worker %v failed to call Coordinator.Request %d times\n", pid, failedCallCnt)
 			break
 		}
 		if !ok {
@@ -58,6 +59,7 @@ func Worker(mapf func(string, string) []KeyValue,
 		}
 
 		if requestReply.Finished {
+			log.Printf("Worker %v finish\n", pid)
 			break
 		}
 		doneArgs := DoneArgs{}
@@ -65,9 +67,10 @@ func Worker(mapf func(string, string) []KeyValue,
 		switch requestReply.TaskType {
 		case "Map":
 			log.Printf("Worker %v start map task %d\n", pid, requestReply.MapId)
-			ok := execMapTask(mapf, requestReply.Filename, requestReply.MapId, requestReply.NReduce)
-			if !ok {
+			err := execMapTask(mapf, requestReply.Filename, requestReply.MapId, requestReply.NReduce)
+			if err != nil {
 				log.Printf("execMapTask failed, filename: %s, mapId: %d\n", requestReply.Filename, requestReply.MapId)
+				log.Fatalf("execMapTask failed: %v", err)
 				continue
 			}
 			log.Printf("Worker %v finish map task %d\n", pid, requestReply.MapId)
@@ -75,16 +78,17 @@ func Worker(mapf func(string, string) []KeyValue,
 				DoneArgs{MapId: requestReply.MapId, TaskType: "Map"}
 		case "Reduce":
 			log.Printf("Worker %v start reduce task %d\n", pid, requestReply.ReduceId)
-			ok := execReduceTask(reducef, requestReply.NMap, requestReply.ReduceId)
-			if !ok {
+			err := execReduceTask(reducef, requestReply.NMap, requestReply.ReduceId)
+			if err != nil {
 				log.Printf("execReduceTask failed, filename: %d, reduceId: %d\n", requestReply.NMap, requestReply.ReduceId)
+				log.Fatalf("execReduceTask failed: %v", err)
 				continue
 			}
 			log.Printf("Worker %v finish reduce task %d\n", pid, requestReply.ReduceId)
 			doneArgs =
 				DoneArgs{ReduceId: requestReply.ReduceId, TaskType: "Reduce"}
 		default:
-			log.Printf("unknown task type: %s\n", requestReply.TaskType)
+			// log.Printf("unknown task type: %s\n", requestReply.TaskType)
 			continue
 		}
 		done := call("Coordinator.TaskDone", &doneArgs, &doneReply)
@@ -99,35 +103,43 @@ func Worker(mapf func(string, string) []KeyValue,
 
 }
 
-func execMapTask(mapf func(string, string) []KeyValue, filename string, mapId int, nReduce int) bool {
+func execMapTask(mapf func(string, string) []KeyValue, filename string, mapId int, nReduce int) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatalf("cannot open %v", filename)
-		return false
+		return err
 	}
 	content, err := ioutil.ReadAll(file)
 	if err != nil {
 		log.Fatalf("cannot read %v", filename)
-		return false
+		return err
 	}
 	file.Close()
-	kva := mapf(filename, string(content))
-	for _, kv := range kva {
+	kvAll := mapf(filename, string(content))
+	kvBucket := make([][]KeyValue, nReduce)
+	for _, kv := range kvAll {
 		reduceId := ihash(kv.Key) % nReduce
-		jsonName := fmt.Sprintf("mr-%d-%d", mapId, reduceId)
-		saveJSON(jsonName, kv)
+		kvBucket[reduceId] = append(kvBucket[reduceId], kv)
 	}
-	return true
+	for i, bu := range kvBucket {
+		jsonName := fmt.Sprintf("mr-%d-%d", mapId, i)
+		err := saveJSON(jsonName, bu)
+		if err != nil {
+			log.Fatalf("cannot save %v", jsonName)
+			return err
+		}
+	}
+	return nil
 }
 
-func execReduceTask(reducef func(string, []string) string, nMap int, reduceId int) bool {
+func execReduceTask(reducef func(string, []string) string, nMap int, reduceId int) error {
 	kva := make([]KeyValue, 0)
 	for i := 0; i < nMap; i++ {
 		jsonName := fmt.Sprintf("mr-%d-%d", i, reduceId)
 		file, err := os.Open(jsonName)
 		if err != nil {
 			log.Fatalf("cannot open %v", jsonName)
-			return false
+			return err
 		}
 		dec := json.NewDecoder(file)
 		for {
@@ -146,7 +158,7 @@ func execReduceTask(reducef func(string, []string) string, nMap int, reduceId in
 	ofile, err := os.Create(oname)
 	if err != nil {
 		log.Fatalf("cannot create %v", oname)
-		return false
+		return err
 	}
 	defer ofile.Close()
 	i := 0
@@ -165,10 +177,21 @@ func execReduceTask(reducef func(string, []string) string, nMap int, reduceId in
 		fmt.Fprintf(ofile, "%v %v\n", kva[i].Key, output)
 		i = j
 	}
-	return true
+	return nil
 }
 
-func saveJSON(filename string, kv KeyValue) error {
+func saveJSON(filename string, kv []KeyValue) error {
+	// 定义文件夹路径
+	dirPath := "./out"
+
+	// 尝试创建文件夹，包括所有必要的父文件夹
+	err := os.MkdirAll(dirPath, os.ModePerm)
+	if err != nil {
+		fmt.Println("Error creating directory:", err)
+		return err
+	}
+
+	filename = fmt.Sprintf("%v/%v", dirPath, filename)
 	file, err := os.Create(filename)
 	if err != nil {
 		log.Fatalf("cannot create %v", filename)
