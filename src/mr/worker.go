@@ -34,7 +34,13 @@ func ihash(key string) int {
 // main/mrworker.go calls this function.
 func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
-
+	// logname := "mrworker.log"
+	// logfile, err := os.OpenFile(logname, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	// if err != nil {
+	// 	log.Fatalf("Failed to open log file: %v", err)
+	// }
+	// log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	// log.SetOutput(logfile)
 	pid := os.Getpid()
 	fmt.Printf("Worker %v start\n", pid)
 	failedCallCnt := 0
@@ -58,30 +64,30 @@ func Worker(mapf func(string, string) []KeyValue,
 		doneReply := DoneReply{}
 		switch requestReply.TaskType {
 		case "Map":
+			log.Printf("Worker %v start map task %d\n", pid, requestReply.MapId)
 			ok := execMapTask(mapf, requestReply.Filename, requestReply.MapId, requestReply.NReduce)
 			if !ok {
 				log.Printf("execMapTask failed, filename: %s, mapId: %d\n", requestReply.Filename, requestReply.MapId)
 				continue
 			}
-			doneArgs.mu.Lock()
-			doneArgs.MapId = requestReply.MapId
-			doneArgs.TaskType = "Map"
-			doneArgs.mu.Unlock()
+			log.Printf("Worker %v finish map task %d\n", pid, requestReply.MapId)
+			doneArgs =
+				DoneArgs{MapId: requestReply.MapId, TaskType: "Map"}
 		case "Reduce":
+			log.Printf("Worker %v start reduce task %d\n", pid, requestReply.ReduceId)
 			ok := execReduceTask(reducef, requestReply.NMap, requestReply.ReduceId)
 			if !ok {
 				log.Printf("execReduceTask failed, filename: %d, reduceId: %d\n", requestReply.NMap, requestReply.ReduceId)
 				continue
 			}
-			doneArgs.mu.Lock()
-			doneArgs.ReduceId = requestReply.ReduceId
-			doneArgs.TaskType = "Reduce"
-			doneArgs.mu.Unlock()
+			log.Printf("Worker %v finish reduce task %d\n", pid, requestReply.ReduceId)
+			doneArgs =
+				DoneArgs{ReduceId: requestReply.ReduceId, TaskType: "Reduce"}
 		default:
 			log.Printf("unknown task type: %s\n", requestReply.TaskType)
 			continue
 		}
-		done := call("Coordinator.Done", &doneArgs, &doneReply)
+		done := call("Coordinator.TaskDone", &doneArgs, &doneReply)
 		if !done {
 			log.Printf("call Coordinator.Done failed\n")
 			continue

@@ -27,48 +27,53 @@ type Coordinator struct {
 }
 
 func (c *Coordinator) Request(args *RequestArgs, reply *RequestReply) error {
+	log.Printf("received request: %v", args)
 	switch c.phase {
 	case "Map":
+		log.Printf("received map request: %v", args)
 		err := c.mapRequest(args, reply)
 		if err != nil {
 			return err
 		}
+		log.Printf("send map reply: %v", reply)
 	case "Reduce":
+		log.Printf("received reduce request: %v", args)
 		err := c.reduceRequest(args, reply)
 		if err != nil {
 			return err
 		}
+		log.Printf("send reduce reply: %v", reply)
 	case "Done":
+		log.Printf("received done request: %v", args)
 		reply.Finished = true
 	}
 	return nil
 }
 
-// Your code here -- RPC handlers for the worker to call.
 func (c *Coordinator) mapRequest(args *RequestArgs, reply *RequestReply) error {
+	log.Printf("mapRequest: %v", args)
 	for mapId, state := range c.mapState {
 		if state == 0 {
-			reply.mu.Lock()
+			reply.Mu.Lock()
 			reply.Filename = c.fileMap[mapId]
 			reply.NReduce = c.nReduce
 			reply.MapId = mapId
-			reply.ReduceId = -1
 			reply.TaskType = c.phase
-			reply.mu.Unlock()
+			reply.Mu.Unlock()
 
 			c.mu.Lock()
 			c.mapState[mapId] = 1
-			c.mu.Lock()
+			c.mu.Unlock()
 			log.Printf("mapRequest Changed State to: %v", c.mapState)
 			t := time.NewTimer(time.Second * 10)
-			go func(mapId int) {
+			go func(id int) {
 				<-t.C
-				if c.mapState[mapId] == 1 {
+				if c.mapState[id] == 1 {
 					c.mu.Lock()
-					c.mapState[mapId] = 0
+					c.mapState[id] = 0
 					c.mu.Unlock()
 
-					log.Printf("mapRequest Changed State to: %v", c.mapState)
+					log.Printf("mapRequest has changed State to: %v,becasuse of timeout.", c.mapState)
 				}
 			}(mapId)
 		}
@@ -76,31 +81,29 @@ func (c *Coordinator) mapRequest(args *RequestArgs, reply *RequestReply) error {
 	return nil
 }
 func (c *Coordinator) reduceRequest(args *RequestArgs, reply *RequestReply) error {
+	log.Printf("reduceRequest: %v", args)
 	for reduceId, state := range c.reduceState {
 		if state == 0 {
-			reply.mu.Lock()
-			reply.Filename = c.fileMap[reduceId]
-			reply.NReduce = c.nReduce
+			reply.Mu.Lock()
 			reply.NMap = len(c.mapState)
 			reply.ReduceId = reduceId
-			reply.MapId = -1
 			reply.TaskType = c.phase
-			reply.mu.Unlock()
+			reply.Mu.Unlock()
 
 			c.mu.Lock()
 			c.reduceState[reduceId] = 1
-			c.mu.Lock()
+			c.mu.Unlock()
 
 			log.Printf("mapRequest Changed State to: %v", c.mapState)
 			t := time.NewTimer(time.Second * 10)
-			go func(reduceId int) {
+			go func(id int) {
 				<-t.C
-				if c.reduceState[reduceId] == 1 {
+				if c.reduceState[id] == 1 {
 					c.mu.Lock()
-					c.reduceState[reduceId] = 0
+					c.reduceState[id] = 0
 					c.mu.Unlock()
 
-					log.Printf("mapRequest Changed State to: %v", c.mapState)
+					log.Printf("ruduceRequest has changed State to: %v,becasuse of timeout.", c.mapState)
 				}
 			}(reduceId)
 		}
@@ -130,19 +133,20 @@ func (c *Coordinator) TaskDone(args *DoneArgs, reply *DoneReply) error {
 }
 func (c *Coordinator) mapTaskDone(args *DoneArgs, reply *DoneReply) error {
 	c.mu.Lock()
-	defer c.mu.Lock()
+	defer c.mu.Unlock()
 	c.mapState[args.MapId] = 2
+	log.Printf("mapTaskDone changed state to: %v", c.mapState)
 	c.mapFinishedCnt++
 	if c.mapFinishedCnt == len(c.mapState) {
 		c.phase = "Reduce"
 	}
-
 	return nil
 }
 func (c *Coordinator) reduceTaskDone(args *DoneArgs, reply *DoneReply) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.reduceState[args.ReduceId] = 2
+	log.Printf("reduceTaskDone changed state to: %v", c.reduceState)
 	c.reduceFinishedCnt++
 	if c.reduceFinishedCnt == len(c.reduceState) {
 		c.phase = "Done"
@@ -188,7 +192,13 @@ func (c *Coordinator) Done() bool {
 // nReduce is the number of reduce tasks to use.
 func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{}
-
+	logname := "mrcoordinator.log"
+	logfile, err := os.OpenFile(logname, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	log.SetOutput(logfile)
 	//Get all the files
 	//每个文件会有三种状态：未被处理 0，处理中 1，处理结束 2
 	mapState := make(map[int]int)
@@ -207,6 +217,8 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	}
 	c.reduceState = reduceState
 	c.phase = "Map"
+	c.mapFinishedCnt = 0
+	c.reduceFinishedCnt = 0
 	c.server()
 	return &c
 }

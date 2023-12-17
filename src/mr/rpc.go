@@ -32,21 +32,19 @@ type RequestArgs struct {
 type RequestReply struct {
 	TaskType string
 	Filename string
-	NMap     int
 	NReduce  int
+	NMap     int
 	MapId    int
 	ReduceId int
 
 	Finished bool //已无任务
-	mu       sync.Mutex
+	Mu       sync.Mutex
 }
 
 type DoneArgs struct {
 	TaskType string
 	ReduceId int
 	MapId    int
-
-	mu sync.Mutex
 }
 
 type DoneReply struct {
