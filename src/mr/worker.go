@@ -88,7 +88,7 @@ func Worker(mapf func(string, string) []KeyValue,
 			doneArgs =
 				DoneArgs{ReduceId: requestReply.ReduceId, TaskType: "Reduce"}
 		default:
-			// log.Printf("unknown task type: %s\n", requestReply.TaskType)
+			log.Printf("unknown task type: %s\n", requestReply.TaskType)
 			continue
 		}
 		done := call("Coordinator.TaskDone", &doneArgs, &doneReply)
@@ -122,7 +122,7 @@ func execMapTask(mapf func(string, string) []KeyValue, filename string, mapId in
 		kvBucket[reduceId] = append(kvBucket[reduceId], kv)
 	}
 	for i, bu := range kvBucket {
-		jsonName := fmt.Sprintf("mr-%d-%d", mapId, i)
+		jsonName := fmt.Sprintf("mr-%d-%d.json", mapId, i)
 		err := saveJSON(jsonName, bu)
 		if err != nil {
 			log.Fatalf("cannot save %v", jsonName)
@@ -135,7 +135,7 @@ func execMapTask(mapf func(string, string) []KeyValue, filename string, mapId in
 func execReduceTask(reducef func(string, []string) string, nMap int, reduceId int) error {
 	kva := make([]KeyValue, 0)
 	for i := 0; i < nMap; i++ {
-		jsonName := fmt.Sprintf("mr-%d-%d", i, reduceId)
+		jsonName := fmt.Sprintf("./out/mr-%d-%d.json", i, reduceId)
 		file, err := os.Open(jsonName)
 		if err != nil {
 			log.Fatalf("cannot open %v", jsonName)
@@ -143,11 +143,11 @@ func execReduceTask(reducef func(string, []string) string, nMap int, reduceId in
 		}
 		dec := json.NewDecoder(file)
 		for {
-			var kv KeyValue
+			var kv []KeyValue
 			if err := dec.Decode(&kv); err != nil {
 				break
 			}
-			kva = append(kva, kv)
+			kva = append(kva, kv...)
 		}
 		file.Close()
 	}

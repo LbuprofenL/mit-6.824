@@ -74,6 +74,7 @@ func (c *Coordinator) mapRequest(args *RequestArgs, reply *RequestReply) error {
 					log.Printf("mapRequest has changed State to: %v,becasuse of timeout.", c.mapState)
 				}
 			}(mapId)
+			break
 		}
 	}
 	return nil
@@ -90,7 +91,7 @@ func (c *Coordinator) reduceRequest(args *RequestArgs, reply *RequestReply) erro
 			c.reduceState[reduceId] = 1
 			c.mu.Unlock()
 
-			log.Printf("mapRequest Changed State to: %v", c.mapState)
+			log.Printf("reduceRequest Changed State to: %v", c.reduceState)
 			t := time.NewTimer(time.Second * 10)
 			go func(id int) {
 				<-t.C
@@ -99,9 +100,10 @@ func (c *Coordinator) reduceRequest(args *RequestArgs, reply *RequestReply) erro
 					c.reduceState[id] = 0
 					c.mu.Unlock()
 
-					log.Printf("ruduceRequest has changed State to: %v,becasuse of timeout.", c.mapState)
+					log.Printf("ruduceRequest has changed State to: %v,becasuse of timeout.", c.reduceState)
 				}
 			}(reduceId)
+			break
 		}
 	}
 	return nil
@@ -134,6 +136,7 @@ func (c *Coordinator) mapTaskDone(args *DoneArgs, reply *DoneReply) error {
 	log.Printf("mapTaskDone changed state to: %v", c.mapState)
 	c.mapFinishedCnt++
 	if c.mapFinishedCnt == len(c.mapState) {
+		log.Printf("mapTaskDone all map task finished,change phase to reduce")
 		c.phase = "Reduce"
 	}
 	return nil
@@ -145,6 +148,7 @@ func (c *Coordinator) reduceTaskDone(args *DoneArgs, reply *DoneReply) error {
 	log.Printf("reduceTaskDone changed state to: %v", c.reduceState)
 	c.reduceFinishedCnt++
 	if c.reduceFinishedCnt == len(c.reduceState) {
+		log.Printf("reduceTaskDone all reduce task finished,change phase to Done")
 		c.phase = "Done"
 	}
 	return nil
