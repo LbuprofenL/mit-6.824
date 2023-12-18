@@ -16,8 +16,9 @@ type Coordinator struct {
 	//2:processed
 	mapState    map[int]int //mapId -> state
 	reduceState map[int]int //reduceId ->state
-	fileMap     map[int]string
-	nReduce     int
+
+	fileMap map[int]string //mapId->filename
+	nReduce int
 
 	mapFinishedCnt    int
 	reduceFinishedCnt int
@@ -54,9 +55,9 @@ func (c *Coordinator) mapRequest(args *RequestArgs, reply *RequestReply) error {
 	log.Printf("mapRequest: %v", args)
 	for mapId, state := range c.mapState {
 		if state == 0 {
-			reply.Filename = c.fileMap[mapId]
-			reply.NReduce = c.nReduce
-			reply.MapId = mapId
+			reply.MapReply.Filename = c.fileMap[mapId]
+			reply.MapReply.NReduce = c.nReduce
+			reply.MapReply.MapId = mapId
 			reply.TaskType = c.phase
 
 			c.mu.Lock()
@@ -83,8 +84,8 @@ func (c *Coordinator) reduceRequest(args *RequestArgs, reply *RequestReply) erro
 	log.Printf("reduceRequest: %v", args)
 	for reduceId, state := range c.reduceState {
 		if state == 0 {
-			reply.NMap = len(c.mapState)
-			reply.ReduceId = reduceId
+			reply.ReduceReply.NMap = len(c.mapState)
+			reply.ReduceReply.ReduceId = reduceId
 			reply.TaskType = c.phase
 
 			c.mu.Lock()

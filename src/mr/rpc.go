@@ -30,15 +30,26 @@ type RequestArgs struct {
 
 type RequestReply struct {
 	TaskType string
-	Filename string
-	NReduce  int
-	NMap     int
-	MapId    int
-	ReduceId int
+	// Filename string
+	// NReduce  int
+	// NMap     int
+	// MapId    int
+	// ReduceId int
+	MapReply    MapReplyStruct
+	ReduceReply ReduceReplyStruct
 
 	Finished bool //已无任务
 }
 
+type MapReplyStruct struct {
+	Filename string
+	NReduce  int
+	MapId    int
+}
+type ReduceReplyStruct struct {
+	NMap     int
+	ReduceId int
+}
 type DoneArgs struct {
 	TaskType string
 	ReduceId int

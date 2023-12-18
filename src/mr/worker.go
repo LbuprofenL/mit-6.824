@@ -47,7 +47,7 @@ func Worker(mapf func(string, string) []KeyValue,
 	for {
 		requestArgs := RequestArgs{}
 		requestArgs.Pid = pid
-		requestReply := RequestReply{}
+		requestReply := RequestReply{MapReply: MapReplyStruct{}, ReduceReply: ReduceReplyStruct{}}
 		ok := call("Coordinator.Request", &requestArgs, &requestReply)
 		if failedCallCnt > 30 {
 			log.Printf("Worker %v failed to call Coordinator.Request %d times\n", pid, failedCallCnt)
@@ -66,27 +66,27 @@ func Worker(mapf func(string, string) []KeyValue,
 		doneReply := DoneReply{}
 		switch requestReply.TaskType {
 		case "Map":
-			log.Printf("Worker %v start map task %d\n", pid, requestReply.MapId)
-			err := execMapTask(mapf, requestReply.Filename, requestReply.MapId, requestReply.NReduce)
+			log.Printf("Worker %v start map task %d\n", pid, requestReply.MapReply.MapId)
+			err := execMapTask(mapf, requestReply.MapReply.Filename, requestReply.MapReply.MapId, requestReply.MapReply.NReduce)
 			if err != nil {
-				log.Printf("execMapTask failed, filename: %s, mapId: %d\n", requestReply.Filename, requestReply.MapId)
+				log.Printf("execMapTask failed, filename: %s, mapId: %d\n", requestReply.MapReply.Filename, requestReply.MapReply.MapId)
 				log.Fatalf("execMapTask failed: %v", err)
 				continue
 			}
-			log.Printf("Worker %v finish map task %d\n", pid, requestReply.MapId)
+			log.Printf("Worker %v finish map task %d\n", pid, requestReply.MapReply.MapId)
 			doneArgs =
-				DoneArgs{MapId: requestReply.MapId, TaskType: "Map"}
+				DoneArgs{MapId: requestReply.MapReply.MapId, TaskType: "Map"}
 		case "Reduce":
-			log.Printf("Worker %v start reduce task %d\n", pid, requestReply.ReduceId)
-			err := execReduceTask(reducef, requestReply.NMap, requestReply.ReduceId)
+			log.Printf("Worker %v start reduce task %d\n", pid, requestReply.ReduceReply.ReduceId)
+			err := execReduceTask(reducef, requestReply.ReduceReply.NMap, requestReply.ReduceReply.ReduceId)
 			if err != nil {
-				log.Printf("execReduceTask failed, filename: %d, reduceId: %d\n", requestReply.NMap, requestReply.ReduceId)
+				log.Printf("execReduceTask failed, filename: %d, reduceId: %d\n", requestReply.ReduceReply.NMap, requestReply.ReduceReply.ReduceId)
 				log.Fatalf("execReduceTask failed: %v", err)
 				continue
 			}
-			log.Printf("Worker %v finish reduce task %d\n", pid, requestReply.ReduceId)
+			log.Printf("Worker %v finish reduce task %d\n", pid, requestReply.ReduceReply.ReduceId)
 			doneArgs =
-				DoneArgs{ReduceId: requestReply.ReduceId, TaskType: "Reduce"}
+				DoneArgs{ReduceId: requestReply.ReduceReply.ReduceId, TaskType: "Reduce"}
 		default:
 			log.Printf("unknown task type: %s\n", requestReply.TaskType)
 			continue
