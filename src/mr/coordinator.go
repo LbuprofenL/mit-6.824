@@ -24,12 +24,17 @@ type Coordinator struct {
 	reduceFinishedCnt int
 
 	phase string
-	mu    sync.Mutex
+	mu    sync.RWMutex
 }
 
 func (c *Coordinator) Request(args *RequestArgs, reply *RequestReply) error {
 	log.Printf("received request: %v", args)
-	switch c.phase {
+
+	c.mu.RLock()
+	curPhase := c.phase
+	c.mu.RUnlock()
+
+	switch curPhase {
 	case "Map":
 		log.Printf("received map request: %v", args)
 		err := c.mapRequest(args, reply)
@@ -53,65 +58,104 @@ func (c *Coordinator) Request(args *RequestArgs, reply *RequestReply) error {
 
 func (c *Coordinator) mapRequest(args *RequestArgs, reply *RequestReply) error {
 	log.Printf("mapRequest: %v", args)
-	for mapId, state := range c.mapState {
-		if state == 0 {
-			reply.MapReply.Filename = c.fileMap[mapId]
-			reply.MapReply.NReduce = c.nReduce
-			reply.MapReply.MapId = mapId
-			reply.TaskType = c.phase
 
-			c.mu.Lock()
-			c.mapState[mapId] = 1
-			c.mu.Unlock()
-			log.Printf("mapRequest Changed State to: %v", c.mapState)
-			t := time.NewTimer(time.Second * 10)
-			go func(id int) {
-				<-t.C
-				if c.mapState[id] == 1 {
-					c.mu.Lock()
-					c.mapState[id] = 0
-					c.mu.Unlock()
+	var mapId int
+	flag := false
 
-					log.Printf("mapRequest has changed State to: %v,becasuse of timeout.", c.mapState)
-				}
-			}(mapId)
+	c.mu.RLock()
+	for i, s := range c.mapState {
+		if s == 0 {
+			flag = true
+
+			mapId = i
 			break
 		}
 	}
+	c.mu.RUnlock()
+
+	if !flag {
+		return nil
+	}
+
+	c.mu.RLock()
+	reply.MapReply.Filename = c.fileMap[mapId]
+	reply.MapReply.NReduce = c.nReduce
+	reply.MapReply.MapId = mapId
+	reply.TaskType = c.phase
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	c.mapState[mapId] = 1
+	log.Printf("mapRequest Changed State to: %v", c.mapState)
+	c.mu.Unlock()
+
+	t := time.NewTimer(time.Second * 10)
+	go func(id int) {
+		<-t.C
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if c.mapState[id] == 1 {
+			c.mapState[id] = 0
+
+			log.Printf("mapRequest has changed State to: %v,becasuse of timeout.", c.mapState)
+		}
+	}(mapId)
 	return nil
 }
+
 func (c *Coordinator) reduceRequest(args *RequestArgs, reply *RequestReply) error {
 	log.Printf("reduceRequest: %v", args)
-	for reduceId, state := range c.reduceState {
-		if state == 0 {
-			reply.ReduceReply.NMap = len(c.mapState)
-			reply.ReduceReply.ReduceId = reduceId
-			reply.TaskType = c.phase
 
-			c.mu.Lock()
-			c.reduceState[reduceId] = 1
-			c.mu.Unlock()
+	var reduceId int
+	flag := false
 
-			log.Printf("reduceRequest Changed State to: %v", c.reduceState)
-			t := time.NewTimer(time.Second * 10)
-			go func(id int) {
-				<-t.C
-				if c.reduceState[id] == 1 {
-					c.mu.Lock()
-					c.reduceState[id] = 0
-					c.mu.Unlock()
-
-					log.Printf("ruduceRequest has changed State to: %v,becasuse of timeout.", c.reduceState)
-				}
-			}(reduceId)
+	c.mu.RLock()
+	for i, s := range c.reduceState {
+		if s == 0 {
+			flag = true
+			reduceId = i
 			break
 		}
 	}
+	c.mu.RUnlock()
+
+	if !flag {
+		return nil
+	}
+
+	c.mu.RLock()
+	reply.ReduceReply.NMap = len(c.mapState)
+	reply.ReduceReply.ReduceId = reduceId
+	reply.TaskType = c.phase
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	c.reduceState[reduceId] = 1
+	log.Printf("reduceRequest Changed State to: %v", c.reduceState)
+	c.mu.Unlock()
+
+	t := time.NewTimer(time.Second * 10)
+	go func(id int) {
+		<-t.C
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if c.reduceState[id] == 1 {
+			c.reduceState[id] = 0
+
+			log.Printf("ruduceRequest has changed State to: %v,becasuse of timeout.", c.reduceState)
+		}
+	}(reduceId)
+
 	return nil
 }
 
 func (c *Coordinator) TaskDone(args *DoneArgs, reply *DoneReply) error {
-	if args.TaskType != c.phase {
+
+	c.mu.RLock()
+	curPhase := c.phase
+	c.mu.RUnlock()
+
+	if args.TaskType != curPhase {
 		reply.Reset = true
 		return nil
 	}
@@ -130,9 +174,11 @@ func (c *Coordinator) TaskDone(args *DoneArgs, reply *DoneReply) error {
 	}
 	return nil
 }
+
 func (c *Coordinator) mapTaskDone(args *DoneArgs, reply *DoneReply) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	c.mapState[args.MapId] = 2
 	log.Printf("mapTaskDone changed state to: %v", c.mapState)
 	c.mapFinishedCnt++
@@ -142,9 +188,11 @@ func (c *Coordinator) mapTaskDone(args *DoneArgs, reply *DoneReply) error {
 	}
 	return nil
 }
+
 func (c *Coordinator) reduceTaskDone(args *DoneArgs, reply *DoneReply) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	c.reduceState[args.ReduceId] = 2
 	log.Printf("reduceTaskDone changed state to: %v", c.reduceState)
 	c.reduceFinishedCnt++
@@ -182,6 +230,8 @@ func (c *Coordinator) server() {
 func (c *Coordinator) Done() bool {
 	ret := false
 
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	if c.phase == "Done" {
 		ret = true
 	}
