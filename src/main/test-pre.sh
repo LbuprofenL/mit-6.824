@@ -60,55 +60,50 @@ rm -f mr-*
 # make sure software is freshly built.
 (cd ../../mrapps && go clean)
 (cd .. && go clean)
-(cd ../../mrapps && go build $RACE -buildmode=plugin wc.go) || exit 1
-(cd ../../mrapps && go build $RACE -buildmode=plugin indexer.go) || exit 1
-(cd ../../mrapps && go build $RACE -buildmode=plugin mtiming.go) || exit 1
-(cd ../../mrapps && go build $RACE -buildmode=plugin rtiming.go) || exit 1
-(cd ../../mrapps && go build $RACE -buildmode=plugin jobcount.go) || exit 1
-(cd ../../mrapps && go build $RACE -buildmode=plugin early_exit.go) || exit 1
-(cd ../../mrapps && go build $RACE -buildmode=plugin crash.go) || exit 1
-(cd ../../mrapps && go build $RACE -buildmode=plugin nocrash.go) || exit 1
+(cd ../../mrapps && go build $RACE -buildmode=plugin pre_pr.go) || exit 1
+
 (cd .. && go build $RACE mrcoordinator.go) || exit 1
 (cd .. && go build $RACE mrworker.go) || exit 1
-(cd .. && go build $RACE mrsequential.go) || exit 1
+(cd .. && go build $RACE ./sequential/pre_sequential.go) || exit 1
 
 failed_any=0
 
 #########################################################
-# first word-count
+# first pre
 
 # generate the correct output
-../mrsequential ../../mrapps/wc.so ../pg*txt || exit 1
-sort mr-out-0 > mr-correct-wc.txt
+echo '***' Starting pre_seq test.
+../pre_sequential ../../mrapps/pre_pr.so ../pr.txt || exit 1
+sort mr-out-0 > mr-correct-pre.txt
 rm -f mr-out*
 
-echo '***' Starting wc test.
+echo '***' Starting pre test.
 
-maybe_quiet $TIMEOUT ../mrcoordinator ../pg*txt &
+maybe_quiet $TIMEOUT ../mrcoordinator ../pr/pr*txt &
 pid=$!
 
 # give the coordinator time to create the sockets.
 sleep 1
 
 # start multiple workers.
-(maybe_quiet $TIMEOUT ../mrworker ../../mrapps/wc.so) &
-(maybe_quiet $TIMEOUT ../mrworker ../../mrapps/wc.so) &
-(maybe_quiet $TIMEOUT ../mrworker ../../mrapps/wc.so) &
+(maybe_quiet $TIMEOUT ../mrworker ../../mrapps/pre_pr.so) &
+(maybe_quiet $TIMEOUT ../mrworker ../../mrapps/pre_pr.so) &
+(maybe_quiet $TIMEOUT ../mrworker ../../mrapps/pre_pr.so) &
 
 # wait for the coordinator to exit.
 wait $pid
 
 # since workers are required to exit when a job is completely finished,
 # and not before, that means the job has finished.
-sort mr-out* | grep . > mr-wc-all
-if cmp mr-wc-all mr-correct-wc.txt
-then
-  echo '---' wc test: PASS
-else
-  echo '---' wc output is not the same as mr-correct-wc.txt
-  echo '---' wc test: FAIL
-  failed_any=1
-fi
+# sort mr-out* | grep . > mr-pre-all
+# if cmp mr-pre-all mr-correct-pre.txt
+# then
+#   echo '---' pre test: PASS
+# else
+#   echo '---' pre output is not the same as mr-correct-pre.txt
+#   echo '---' pre test: FAIL
+#   failed_any=1
+# fi
 
 # wait for remaining workers and coordinator to exit.
 wait

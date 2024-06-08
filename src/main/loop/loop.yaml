@@ -1,0 +1,9 @@
+task_name: loop_pr
+work_dir: ./loop_pr
+input:
+  input_dir: pre
+  input_prefix: pre
+output:
+  output_dir: loop
+  output_filename: loop.txt
+reducer_num: 500

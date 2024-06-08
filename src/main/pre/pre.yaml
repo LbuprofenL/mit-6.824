@@ -1,0 +1,9 @@
+task_name: pre_pr
+work_dir: ./pre_pr
+input:
+  input_dir: pre
+  input_prefix: pr
+output:
+  output_dir: pre
+  output_filename: pre.txt
+reducer_num: 500

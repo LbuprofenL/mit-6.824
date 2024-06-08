@@ -10,3 +10,6 @@ bin/gotests
 bin/gopls
 bin/goplay
 bin/
+src/main/loop/*.txt
+src/main/loop_pr/pre_split/*.txt
+src/main/pre_pr/pr_split/*.txt
