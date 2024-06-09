@@ -119,6 +119,7 @@ fi
 
 wait
 
-sort mr-out-* > ../${OUTPUT_DIR}/${OUTPUT_FILE}
+cat mr-out-* > ../${OUTPUT_DIR}/${OUTPUT_FILE}
 rm -rf out
+rm -rf *split
 rm -f mr-out*

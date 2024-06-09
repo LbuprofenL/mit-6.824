@@ -2,18 +2,20 @@
 
 # 生成初始loop文件
 # 文件名
+cd /home/mit-6.824-lab1/src/main/loop
 output_file="loop.txt"
 previous_weight=1
 tolerance=0.01
 # 行数
 line_count=8397
 
+rm -f $output_file
 # 生成文件
 seq -f "%g 1" 1 $line_count > "$output_file"
 cp "$output_file" "loop-0.txt"
 
 # 执行loop任务 
-cd ..
+cd /home/mit-6.824-lab1/src/main
 #循环执行20次
 for i in {1..20}
 do
@@ -29,5 +31,7 @@ do
    
     echo "Iteration $i completed"
 done
+
+rm -f loop-*.txt
 
 echo "All iterations completed"
