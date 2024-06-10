@@ -20,10 +20,10 @@ RUN (curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Ce
     rm -rf /root/.bash_profile \
     )
 
-EXPOSE 22 80
+EXPOSE 22 80 1234
 
-ADD  ./ /go/
-RUN (cd /go/ && \
+ADD  . /home/
+RUN (cd /home/ && \
     chmod +x ./src/main/mr-task.sh && \
     chmod +x ./src/main/loop/loop_task.sh && \
     chmod +x ./src/main/pagerank/pagerank.sh \

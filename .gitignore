@@ -13,4 +13,5 @@ bin/
 src/main/loop/*.txt
 src/main/loop_pr/pre_split/*.txt
 src/main/pre_pr/pr_split/*.txt
-shared/*
+shared/*/*.txt
+shared/*/*.log
