@@ -5,6 +5,6 @@ if [ -f ~/.bashrc ]; then
 fi
 # User specific environment and startup programs
 GOROOT=/usr/lib/go
-GOPATH=/go
+GOPATH=/home
 PATH=$PATH:$HOME/bin:$GOROOT/bin:$GOPATH/bin
 export PATH

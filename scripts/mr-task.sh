@@ -107,8 +107,6 @@ sleep 1
 
 # start multiple workers.
 (maybe_quiet $TIMEOUT ${MAIN_DIR}/mrworker ${APP_DIR}/${TASK_NAME}.so) &
-(maybe_quiet $TIMEOUT ${MAIN_DIR}/mrworker ${APP_DIR}/${TASK_NAME}.so) &
-(maybe_quiet $TIMEOUT ${MAIN_DIR}/mrworker ${APP_DIR}/${TASK_NAME}.so) &
 
 #
 # check if the output directory is missing.

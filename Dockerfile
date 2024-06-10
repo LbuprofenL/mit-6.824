@@ -22,11 +22,9 @@ RUN (curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Ce
 
 EXPOSE 22 80 1234
 
-ADD  . /home/
-RUN (cd /home/ && \
-    chmod +x ./src/main/mr-task.sh && \
-    chmod +x ./src/main/loop/loop_task.sh && \
-    chmod +x ./src/main/pagerank/pagerank.sh \
+ADD  . /home
+RUN (cd /home && \
+    chmod +x ./scripts/*.sh \
     )
 
 
