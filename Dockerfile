@@ -22,8 +22,9 @@ RUN (curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Ce
 
 EXPOSE 22 80 1234
 
-ADD  . /home
-RUN (cd /home && \
+RUN (mkdir -p /home/mit-6.824-lab1)
+ADD  . /home/mit-6.824-lab1
+RUN (cd /home/mit-6.824-lab1 && \
     chmod +x ./scripts/*.sh \
     )
 
@@ -34,6 +35,6 @@ RUN (source /root/.bash_profile && \
     go env -w GO111MODULE=on && \
     go env -w GOPROXY=https://goproxy.cn,direct && \
     go env -w GOSUMDB=sum.golang.google.cn && \
-    cd /go/src/ && \
+    cd /home/mit-6.824-lab1/src/ && \
     go mod tidy \
     )

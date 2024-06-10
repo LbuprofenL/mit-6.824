@@ -53,9 +53,9 @@ cd ${WORK_DIR} || exit 1
 (cd ${MAIN_DIR} && go clean)
 (cd ${APP_DIR} && go build  -buildmode=plugin $TARGET_APP) || exit 1
 
-(cd ${MAIN_DIR} && go build  mrcoordinator.go) || exit 1
+# (cd ${MAIN_DIR} && go build  mrcoordinator.go) || exit 1
 (cd ${MAIN_DIR} && go build  mrworker.go) || exit 1
-(cd ${MAIN_DIR} && go build mr-split.go)
+# (cd ${MAIN_DIR} && go build mr-split.go)
 
 TIMEOUT=timeout
 TIMEOUT2=""
@@ -93,13 +93,13 @@ then
   exit 1
 fi
 
-maybe_quiet $TIMEOUT ${MAIN_DIR}/mr-split ${INPUT_DIR}/${INPUT_PREFIX}.txt $NUM_REDUCER ./${INPUT_PREFIX}
+# maybe_quiet $TIMEOUT ${MAIN_DIR}/mr-split ${INPUT_DIR}/${INPUT_PREFIX}.txt $NUM_REDUCER ./${INPUT_PREFIX}
 
 #########################################################
 
 echo '***' Starting ${TASK_NAME} app.
 
-maybe_quiet $TIMEOUT ${MAIN_DIR}/mrcoordinator $NUM_REDUCER ${WORK_DIR}/${INPUT_PREFIX}-split/${INPUT_PREFIX}*.txt &
+# maybe_quiet $TIMEOUT ${MAIN_DIR}/mrcoordinator $NUM_REDUCER ${WORK_DIR}/${INPUT_PREFIX}-split/${INPUT_PREFIX}*.txt &
 pid=$!
 
 # give the coordinator time to create the sockets.
@@ -112,14 +112,14 @@ sleep 1
 # check if the output directory is missing.
 #
 
-if [ ! -d ${OUTPUT_DIR} ]
-then
-  mkdir ${OUTPUT_DIR}
-fi
+# if [ ! -d ${OUTPUT_DIR} ]
+# then
+#   mkdir ${OUTPUT_DIR}
+# fi
 
-wait
+# wait
 
-cat mr-out-* > ${OUTPUT_DIR}/${OUTPUT_FILE}
-rm -rf out
-rm -rf *split
-rm -f mr-out*
+# cat mr-out-* > ${OUTPUT_DIR}/${OUTPUT_FILE}
+# rm -rf out
+# rm -rf *split
+# rm -f mr-out*

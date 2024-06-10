@@ -9,4 +9,4 @@ SHARED_DIR=${ROOT_DIR}/shared
 cd $MAIN_DIR
 
 # 执行normal任务
-go run mr.go ${CONF_DIR}/normal.yaml
+go run start_worker.go ${CONF_DIR}/normal.yaml

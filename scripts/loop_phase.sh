@@ -10,5 +10,5 @@ SCRIPTS_DIR=${ROOT_DIR}/scripts
 cd $MAIN_DIR
 
 # 执行loop任务
-$SCRIPTS_DIR/loop_task.sh
+go run start_worker.go ${CONF_DIR}/loop.yaml
 
