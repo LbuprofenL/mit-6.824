@@ -24,9 +24,9 @@ EXPOSE 22 80
 
 ADD  ./ /go/
 RUN (cd /go/ && \
-    chmod +x ./src/main/mr-rask.sh && \
+    chmod +x ./src/main/mr-task.sh && \
     chmod +x ./src/main/loop/loop_task.sh && \
-    chmod +x ./src/main/pagerank.sh && \
+    chmod +x ./src/main/pagerank/pagerank.sh \
     )
 
 
@@ -35,5 +35,7 @@ ADD ssh* /etc/ssh/
 RUN (source /root/.bash_profile && \
     go env -w GO111MODULE=on && \
     go env -w GOPROXY=https://goproxy.cn,direct && \
-    go env -w GOSUMDB=sum.golang.google.cn \
+    go env -w GOSUMDB=sum.golang.google.cn && \
+    cd /go/src/ && \
+    go mod tidy \
     )
