@@ -1,9 +1,9 @@
 task_name: normal_pr
-work_dir: ./normal_pr
+work_dir: ./shared/normal_pr
 input:
-  input_dir: loop
+  input_dir: shared/loop
   input_prefix: loop
 output:
-  output_dir: pagerank
+  output_dir: shared/pagerank
   output_filename: pagerank.txt
 reducer_num: 1
