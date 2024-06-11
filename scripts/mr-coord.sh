@@ -47,11 +47,7 @@ rm -rf ${WORK_DIR}
 mkdir ${WORK_DIR} || exit 1
 cd ${WORK_DIR} || exit 1
 
-# echo `pwd` # echo $(pwd)
-
-(cd $APP_DIR && go clean)
-(cd ${MAIN_DIR} && go clean)
-(cd ${APP_DIR} && go build  -buildmode=plugin $TARGET_APP) || exit 1
+echo `pwd` # echo $(pwd)
 
 (cd ${MAIN_DIR} && go build  mrcoordinator.go) || exit 1
 # (cd ${MAIN_DIR} && go build  mrworker.go) || exit 1

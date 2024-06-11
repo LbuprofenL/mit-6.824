@@ -28,6 +28,7 @@ RUN (cd /home/mit-6.824-lab1 && \
     chmod +x ./scripts/*.sh \
     )
 
+ENV PATH $PATH:/usr/lib/go/bin
 
 ADD .bash_profile /root/
 ADD ssh* /etc/ssh/
@@ -36,5 +37,6 @@ RUN (source /root/.bash_profile && \
     go env -w GOPROXY=https://goproxy.cn,direct && \
     go env -w GOSUMDB=sum.golang.google.cn && \
     cd /home/mit-6.824-lab1/src/ && \
+    go get gopkg.in/yaml.v3 && \
     go mod tidy \
     )

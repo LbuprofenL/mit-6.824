@@ -57,7 +57,7 @@ func main() {
 	// 执行 MapReduce 任务
 	fmt.Printf("Running MapReduce task with args: %s\n", args)
 
-	cmd := exec.Command("../../scripts/mr-worker.sh", args...)
+	cmd := exec.Command("/home/mit-6.824-lab1/scripts/mr-worker.sh", args...)
 	// 设置命令的输出和错误输出
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

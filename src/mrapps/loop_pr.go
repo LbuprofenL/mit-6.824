@@ -59,7 +59,7 @@ func Reduce(key string, values []string) string {
 
 	// process the pagerank file.
 	// read the current pagerank file
-	pr_file, err := os.Open("../loop/loop.txt")
+	pr_file, err := os.Open("/home/mit-6.824-lab1/shared/loop/loop.txt")
 	if err != nil {
 		return err.Error()
 	}

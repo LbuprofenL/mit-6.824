@@ -24,7 +24,7 @@ cd $MAIN_DIR
 for i in {1..20}
 do
     echo "Iteration $i"
-    go run start-.go $CONF_DIR/loop.yaml > "loop_run_$i.log" 2>&1
+    /usr/lib/go/bin/go run start-.go $CONF_DIR/loop.yaml > "loop_run_$i.log" 2>&1
 
     if [[ -f "${SHARED_DIR}/loop/loop.txt" ]]; then
         cp ${SHARED_DIR}/loop/loop.txt "${SHARED_DIR}/loop/loop-$i.txt"
