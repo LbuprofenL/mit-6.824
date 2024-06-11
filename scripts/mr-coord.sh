@@ -92,13 +92,13 @@ maybe_quiet $TIMEOUT ${MAIN_DIR}/mr-split ${INPUT_DIR}/${INPUT_PREFIX}.txt $NUM_
 
 #########################################################
 
-echo '***' Starting ${TASK_NAME} app.
+# echo '***' Starting ${TASK_NAME} app.
 
 maybe_quiet $TIMEOUT ${MAIN_DIR}/mrcoordinator $NUM_REDUCER ${WORK_DIR}/${INPUT_PREFIX}-split/${INPUT_PREFIX}*.txt &
 pid=$!
 
 # give the coordinator time to create the sockets.
-sleep 1
+# sleep 1
 
 # start multiple workers.
 # (maybe_quiet $TIMEOUT ${MAIN_DIR}/mrworker ${APP_DIR}/${TASK_NAME}.so) &
@@ -112,9 +112,10 @@ then
   mkdir ${OUTPUT_DIR}
 fi
 
-wait
+wait $pid
+echo '***' Done.
 
-# cat mr-out-* > ${OUTPUT_DIR}/${OUTPUT_FILE}
-# rm -rf out
-# rm -rf *split
-# rm -f mr-out*
+cat mr-out-* > ${OUTPUT_DIR}/${OUTPUT_FILE}
+rm -rf out
+rm -rf *split
+rm -f mr-out*
