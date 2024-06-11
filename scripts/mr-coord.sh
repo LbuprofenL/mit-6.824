@@ -113,7 +113,7 @@ then
   mkdir ${OUTPUT_DIR}
 fi
 
-# wait
+wait
 
 # cat mr-out-* > ${OUTPUT_DIR}/${OUTPUT_FILE}
 # rm -rf out

@@ -7,6 +7,7 @@ RUN (curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Ce
     yum update -y && \
     yum install -y binutils vim gdb wget openssh-server && \
     echo "root:12345678" | chpasswd && \
+    yum install -y dos2unix && \
     ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key && \
     ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key && \
     ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key && \
@@ -25,7 +26,8 @@ EXPOSE 22 80 1234
 RUN (mkdir -p /home/mit-6.824-lab1)
 ADD  . /home/mit-6.824-lab1
 RUN (cd /home/mit-6.824-lab1 && \
-    chmod +x ./scripts/*.sh \
+    chmod +x ./scripts/*.sh && \
+    dos2unix ./scripts/*.sh && \
     )
 
 ENV PATH $PATH:/usr/lib/go/bin
