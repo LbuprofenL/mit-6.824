@@ -49,9 +49,9 @@ cd ${WORK_DIR} || exit 1
 
 echo `pwd` # echo $(pwd)
 
-(cd ${MAIN_DIR} && go build  mrcoordinator.go) || exit 1
-# (cd ${MAIN_DIR} && go build  mrworker.go) || exit 1
-(cd ${MAIN_DIR} && go build mr-split.go)
+# (cd ${MAIN_DIR} && go build  mrcoordinator.go) || exit 1
+# # (cd ${MAIN_DIR} && go build  mrworker.go) || exit 1
+# (cd ${MAIN_DIR} && go build mr-split.go)
 
 TIMEOUT=timeout
 TIMEOUT2=""
