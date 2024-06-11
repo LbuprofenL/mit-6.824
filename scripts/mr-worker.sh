@@ -98,7 +98,6 @@ fi
 #########################################################
 
 echo '***' Starting ${TASK_NAME} app.
-
 # maybe_quiet $TIMEOUT ${MAIN_DIR}/mrcoordinator $NUM_REDUCER ${WORK_DIR}/${INPUT_PREFIX}-split/${INPUT_PREFIX}*.txt &
 pid=$!
 

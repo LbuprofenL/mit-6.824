@@ -76,7 +76,6 @@ then
 fi
 
 failed_any=0
-
 echo '***' Starting split input file
 
 #

@@ -13,4 +13,4 @@ SHARED_DIR=${ROOT_DIR}/shared
 (cd ${APP_DIR} && go build  -buildmode=plugin pre_pr.go) || exit 1
 (cd ${APP_DIR} && go build  -buildmode=plugin loop_pr.go) || exit 1
 (cd ${APP_DIR} && go build  -buildmode=plugin normal_pr.go) || exit 1
-(cd ${MAIN_DIR} && go build  mrworker.go) || exit 1
+(cd ${MAIN_DIR} && go build  mrworker.go) || exit  1

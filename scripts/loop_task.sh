@@ -12,7 +12,6 @@ previous_weight=1
 tolerance=0.01
 # 行数
 line_count=8397
-
 rm -f $output_file
 # 生成文件
 seq -f "%g 1" 1 $line_count > "$output_file"

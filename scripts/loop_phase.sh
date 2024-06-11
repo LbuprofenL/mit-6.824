@@ -8,7 +8,6 @@ SCRIPTS_DIR=${ROOT_DIR}/scripts
 
 # 确定运行位置
 cd $MAIN_DIR
-
 # 执行loop任务
 go run start_worker.go ${CONF_DIR}/loop.yaml
 
