@@ -1,8 +1,12 @@
 FROM centos:7
 
 ENV container docker
-RUN (curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo && \
-    yum clean all && \
+RUN (sed -e 's|^mirrorlist=|#mirrorlist=|g' \
+    -e 's|^#baseurl=http://mirror.centos.org/centos|baseurl=https://mirrors.tuna.tsinghua.edu.cn/centos|g' \
+    -i.bak \
+    /etc/yum.repos.d/CentOS-*.repo \
+    )
+RUN (yum clean all && \
     yum makecache && \
     yum update -y && \
     yum install -y binutils vim gdb wget openssh-server && \
@@ -22,11 +26,10 @@ RUN (curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Ce
 
 EXPOSE 22 80 1234
 
+RUN (yum install -y gcc)
+
 RUN (mkdir -p /home/mit-6.824-lab1)
 ADD  . /home/mit-6.824-lab1
-RUN (cd /home/mit-6.824-lab1 && \
-    chmod +x ./scripts/*.sh  \
-    )
 
 ENV PATH $PATH:/usr/lib/go/bin
 
@@ -39,4 +42,9 @@ RUN (source /root/.bash_profile && \
     cd /home/mit-6.824-lab1/src/ && \
     go get gopkg.in/yaml.v3 && \
     go mod tidy \
+    )
+
+RUN (cd /home/mit-6.824-lab1 && \
+    chmod +x ./scripts/*.sh  &&\
+    ./scripts/build_all.sh \
     )

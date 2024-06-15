@@ -123,11 +123,7 @@ func execMapTask(mapf func(string, string) []KeyValue, filename string, mapId in
 	}
 	for i, bu := range kvBucket {
 		jsonName := fmt.Sprintf("mr-%d-%d.json", mapId, i)
-		err := saveJSON(jsonName, bu)
-		if err != nil {
-			log.Fatalf("cannot save %v", jsonName)
-			return err
-		}
+		go saveJSON(jsonName, bu)
 	}
 	return nil
 }
@@ -180,7 +176,7 @@ func execReduceTask(reducef func(string, []string) string, nMap int, reduceId in
 	return nil
 }
 
-func saveJSON(filename string, kv []KeyValue) error {
+func saveJSON(filename string, kv []KeyValue) {
 	// 定义文件夹路径
 	dirPath := "./out"
 
@@ -192,17 +188,16 @@ func saveJSON(filename string, kv []KeyValue) error {
 	}
 
 	filename = fmt.Sprintf("%v/%v", dirPath, filename)
-	file, err := os.Create(filename)
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		log.Fatalf("cannot create %v", filename)
+		log.Fatalf("fail to open file:%v", filename)
 	}
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
 	if err := encoder.Encode(kv); err != nil {
-		return err
+		log.Fatalf("fail to encode file:%v", filename)
 	}
-	return nil
 }
 
 // example function to show how to make an RPC call to the coordinator.

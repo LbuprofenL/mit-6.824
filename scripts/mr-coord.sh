@@ -31,20 +31,21 @@ then
 fi
 
 ISQUIET=$1
-maybe_quiet() {
-    if [ "$ISQUIET" == "quiet" ]; then
-      "$@" > /dev/null 2>&1
-    else
-      "$@"
-    fi
-}
+# maybe_quiet() {
+#     if [ "$ISQUIET" == "quiet" ]; then
+#       "$@" > /dev/null 2>&1
+#     else
+#       "$@"
+#     fi
+# }
 
 # make sure software is freshly built.
 TARGET_APP="${TASK_NAME}.go"
 
 # check if the work directory exists.
 rm -rf ${WORK_DIR}
-mkdir ${WORK_DIR} || exit 1
+mkdir -p ${WORK_DIR}/out || exit 1
+chmod -R 777 ${WORK_DIR} || exit 1
 cd ${WORK_DIR} || exit 1
 
 echo `pwd` # echo $(pwd)
@@ -53,30 +54,29 @@ echo `pwd` # echo $(pwd)
 # # (cd ${MAIN_DIR} && go build  mrworker.go) || exit 1
 # (cd ${MAIN_DIR} && go build mr-split.go)
 
-TIMEOUT=timeout
-TIMEOUT2=""
-if timeout 2s sleep 1 > /dev/null 2>&1
-then
-  :
-else
-  if gtimeout 2s sleep 1 > /dev/null 2>&1
-  then
-    TIMEOUT=gtimeout
-  else
-    # no timeout command
-    TIMEOUT=
-    echo '*** Cannot find timeout command; proceeding without timeouts.'
-  fi
-fi
-if [ "$TIMEOUT" != "" ]
-then
-  TIMEOUT2=$TIMEOUT
-  TIMEOUT2+=" -k 2s 120s "
-  TIMEOUT+=" -k 2s 45s "
-fi
+# TIMEOUT=timeout
+# TIMEOUT2=""
+# if timeout 2s sleep 1 > /dev/null 2>&1
+# then
+#   :
+# else
+#   if gtimeout 2s sleep 1 > /dev/null 2>&1
+#   then
+#     TIMEOUT=gtimeout
+#   else
+#     # no timeout command
+#     TIMEOUT=
+#     echo '*** Cannot find timeout command; proceeding without timeouts.'
+#   fi
+# fi
+# if [ "$TIMEOUT" != "" ]
+# then
+#   TIMEOUT2=$TIMEOUT
+#   TIMEOUT2+=" -k 2s 120s "
+#   TIMEOUT+=" -k 2s 45s "
+# fi
 
-failed_any=0
-echo '***' Starting split input file
+# failed_any=0
 
 #
 # check if the input file exists.
@@ -88,13 +88,15 @@ then
   exit 1
 fi
 
-maybe_quiet $TIMEOUT ${MAIN_DIR}/mr-split ${INPUT_DIR}/${INPUT_PREFIX}.txt $NUM_REDUCER ./${INPUT_PREFIX}
+echo '***' Starting split input file
+
+${MAIN_DIR}/mr-split ${INPUT_DIR}/${INPUT_PREFIX}.txt $NUM_REDUCER ./${INPUT_PREFIX}
 
 #########################################################
 
-# echo '***' Starting ${TASK_NAME} app.
+echo '***' Starting Coordinator.
 
-maybe_quiet $TIMEOUT ${MAIN_DIR}/mrcoordinator $NUM_REDUCER ${WORK_DIR}/${INPUT_PREFIX}-split/${INPUT_PREFIX}*.txt &
+${MAIN_DIR}/mrcoordinator $NUM_REDUCER ${WORK_DIR}/${INPUT_PREFIX}-split/${INPUT_PREFIX}*.txt 
 pid=$!
 
 # give the coordinator time to create the sockets.
@@ -113,6 +115,16 @@ then
 fi
 
 wait $pid
+
+echo '***' Waiting for map tasks to finish.
+
+out_count=$(ls -1 ${WORK_DIR}/mr-out* | wc -l)
+while [ $out_count -lt $NUM_REDUCER ]
+do
+  sleep 1
+  out_count=$(ls -1 ${WORK_DIR}/mr-out* | wc -l)
+done
+
 echo '***' Done.
 
 cat mr-out-* > ${OUTPUT_DIR}/${OUTPUT_FILE}
