@@ -1,11 +1,15 @@
 FROM centos:7
 
 ENV container docker
-RUN (sed -e 's|^mirrorlist=|#mirrorlist=|g' \
-    -e 's|^#baseurl=http://mirror.centos.org/centos|baseurl=https://mirrors.tuna.tsinghua.edu.cn/centos|g' \
-    -i.bak \
-    /etc/yum.repos.d/CentOS-*.repo \
+RUN ( mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backup &&\
+    curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo\
     )
+
+# RUN (sed -e 's|^mirrorlist=|#mirrorlist=|g' \
+#     -e 's|^#baseurl=http://mirror.centos.org/centos|baseurl=http://mirrors.tuna.tsinghua.edu.cn/centos|g' \
+#     -i.bak \
+#     /etc/yum.repos.d/CentOS-*.repo \
+#     )
 RUN (yum clean all && \
     yum makecache && \
     yum update -y && \
@@ -39,8 +43,6 @@ RUN (source /root/.bash_profile && \
     go env -w GO111MODULE=on && \
     go env -w GOPROXY=https://goproxy.cn,direct && \
     go env -w GOSUMDB=sum.golang.google.cn && \
-    cd /home/mit-6.824-lab1/src/ && \
-    go get gopkg.in/yaml.v3 && \
-    go mod tidy \
+    cd /home/mit-6.824-lab1/src/\
     )
 
